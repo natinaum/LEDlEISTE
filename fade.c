@@ -11,12 +11,12 @@
 #define PORT 4210
 #define SA struct sockaddr
 
-static int MAX = SECTIONS*6;
 
 struct sockaddr_in servaddr;
-
+const char* generateJWT(char String[]);
 int main(){
-	int sockfd, connfd, len;
+	char hexCodes[]="000000000000000000000000000000000000000000";
+	int sockfd;
 	// socket create and verification
 	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sockfd == -1) {
@@ -35,23 +35,41 @@ int main(){
 
 
 	char chars[16]="0123456789abcdef";
-	char String[]="000000000000000000000000000000000000000000";
 	int rgb[]={0,0,0};
-	for(int h = 0; h<3;h++){
+	char * jwt;
+	unsigned char pendel=0;
+	_Bool up=1;
+	for(int h = 0; 1;h=(h+1)%3){
 		for(int i = 0; i<256;i++){
 			rgb[h]=i;
 			rgb[(h+2)%3]=255-i;
 			for(int k=0;k<7;k++){
-				String[0+k*6]=chars[(rgb[0]&0b11110000)>>4];
-				String[1+k*6]=chars[(rgb[0]&0b00001111)];
-				String[2+k*6]=chars[(rgb[1]&0b11110000)>>4];
-				String[3+k*6]=chars[(rgb[1]&0b00001111)];
-				String[4+k*6]=chars[(rgb[2]&0b11110000)>>4];
-				String[5+k*6]=chars[(rgb[2]&0b00001111)];
+				if(k<pendel){
+					hexCodes[0+k*6]=chars[(rgb[0]&0b11110000)>>4];
+					hexCodes[1+k*6]=chars[(rgb[0]&0b00001111)];
+					hexCodes[2+k*6]=chars[(rgb[1]&0b11110000)>>4];
+					hexCodes[3+k*6]=chars[(rgb[1]&0b00001111)];
+					hexCodes[4+k*6]=chars[(rgb[2]&0b11110000)>>4];
+					hexCodes[5+k*6]=chars[(rgb[2]&0b00001111)];
+				}
+				else{
+					hexCodes[0+k*6]=chars[(rgb[2]&0b11110000)>>4];
+					hexCodes[1+k*6]=chars[(rgb[2]&0b00001111)];
+					hexCodes[2+k*6]=chars[(rgb[0]&0b11110000)>>4];
+					hexCodes[3+k*6]=chars[(rgb[0]&0b00001111)];
+					hexCodes[4+k*6]=chars[(rgb[1]&0b11110000)>>4];
+					hexCodes[5+k*6]=chars[(rgb[1]&0b00001111)];
+				}
 			}
-			sendto(sockfd, String, (strlen(String)+1), 0,
+			if(!(i%10)){
+				up?pendel++:pendel--;
+				if(pendel==7) up=0;
+				if(pendel==0) up=1;
+			}
+			jwt=generateJWT(hexCodes);
+			sendto(sockfd, jwt, (strlen(jwt)+1), 0,
 			 (struct sockaddr *)&servaddr, sizeof(servaddr)) ;
-			printf("Schicke: %s\n", String);
+			printf("Schicke: %s\n",jwt );
 			usleep(100000);
 		}
 	}
