@@ -41,6 +41,7 @@ int main(){
 	_Bool up=1;
 	for(int h = 0; 1;h=(h+1)%3){
 		for(int i = 0; i<256;i++){
+			sleep(1);
 			rgb[h]=i;
 			rgb[(h+2)%3]=255-i;
 			for(int k=0;k<7;k++){
@@ -61,7 +62,7 @@ int main(){
 					hexCodes[5+k*6]=chars[(rgb[1]&0b00001111)];
 				}
 			}
-			if(!(i%10)){
+			if(!(i%15)){
 				up?pendel++:pendel--;
 				if(pendel==7) up=0;
 				if(pendel==0) up=1;
@@ -70,7 +71,6 @@ int main(){
 			sendto(sockfd, jwt, (strlen(jwt)+1), 0,
 			 (struct sockaddr *)&servaddr, sizeof(servaddr)) ;
 			printf("Schicke: %s\n",jwt );
-			usleep(100000);
 		}
 	}
 }

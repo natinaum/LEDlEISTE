@@ -6,25 +6,44 @@
 
 #define NUM_LEDS 7
 #define DATA_PIN 14
+
+#define SSID "HaRaPlaSi"
+#define PASSWORT "1WonderfulLlamaAlpacaNet"
+#define KEY "test"
+
 CRGB leds[NUM_LEDS];
 
-const char* ssid = "HaRaPlaSi";
-const char* password = "1WonderfulLlamaAlpacaNet";
-const char* secret ="Das Geheimnis muss geheim sein";
+
 WiFiUDP Udp;
 unsigned int localUdpPort = 4210;  // local port to listen on
-char incomingPacket[255];  // buffer for incoming packets
-char  replyPacket[] = "Hi there! Got the message :-)";  // a reply string to send back
+char incomingPacket[190];  // buffer for incoming packets
+//char  replyPacket[] = "Hi there! Got the message :-)";  // a reply string to send back
 #include <CustomJWT.h>
 #include <time.h>
 #include <string.h>
 #define MAX_FIELD_SIZE 44
 
-char key[] = "test";
-CustomJWT jwt(key, 256);
+CustomJWT jwt(KEY, 260);
+int timestart=0;
+_Bool passivSleep(int time){
+  int milli=millis();
+  if(timestart==0){
+    timestart=milli;
+    return 0;
+  }
+  if(timestart>milli){
+    timestart=milli;
+    return 1;
+  }
+  if(milli-timestart>time){
+    timestart=0;
+    return 1;
+  }
+  return 0;
+}
 
 const char *  getRGB(CustomJWT jwt,char pattern[]){
-   char * payload = jwt.payload;
+  char * payload = jwt.payload;
   Serial.println(payload);
   int patternlen=strlen(pattern);
   int i =0;
@@ -55,8 +74,10 @@ const char *  getRGB(CustomJWT jwt,char pattern[]){
 
 const char * decode (char * input){
   jwt.allocateJWTMemory();
-  if(!jwt.decodeJWT(input))
-  return getRGB(jwt,"SRGB-HEX-STRING");
+  if(!jwt.decodeJWT(input)){
+    Serial.printf("F");
+    return getRGB(jwt,"SRGB-HEX-STRING");
+  }
   return NULL;
 }
 
@@ -70,8 +91,8 @@ void setup()
   Serial.println();
 
   //Setup Wi-Fi Network
-  Serial.printf("Connecting to %s ", ssid);
-  WiFi.begin(ssid, password);
+  Serial.printf("Connecting to %s ", SSID);
+  WiFi.begin(SSID, PASSWORT);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
@@ -88,12 +109,13 @@ void setup()
 //receive and return udp package as String
 char * receiv() {
   int packetSize=0;
-  while (true) {
+  //while(true){
     packetSize = Udp.parsePacket();
-    if (packetSize) {
-      break;
+    if (!packetSize) {
+      return 0;
     }
-  }
+  
+  
 
   // receive incoming UDP packets
   Serial.printf("Received %d bytes from %s, port %d\n", packetSize, Udp.remoteIP().toString().c_str(), Udp.remotePort());
@@ -105,9 +127,9 @@ char * receiv() {
   //Serial.printf("UDP packet contents: %s\n", incomingPacket);
 
   // send back a reply, to the IP address and port we got the packet from
-  Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-  Udp.write(replyPacket);
-  Udp.endPacket();
+  //Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+  //Udp.write(replyPacket);
+  //Udp.endPacket();
   return incomingPacket;
 }
 
@@ -133,10 +155,35 @@ void setLed(String Set){
   }
 }
 char * rgb;
+_Bool remote=0;
+int t=0;
+int diff=0;
+int sum;
+static char LEDstates[3][47f]{
+  "ff0000ff0000ff0000ff0000ff0000ff0000ff0000",
+  "00ff0000ff0000ff0000ff0000ff0000ff0000ff00",
+  "0000ff0000ff0000ff0000ff0000ff0000ff0000ff"
+};
+int i=0;
 void loop()
 {
   rgb=receiv();
-  setLed(decode(rgb));
+  if(rgb){
+    remote=1;
+    setLed(decode(rgb));
+  }
+  if(!remote){
+    diff=t;
+    t=millis();
+    diff=diff-t;
+    sum+=diff;
+    if(passivSleep(1000)){
+      setLed(LEDstates[i]);
+      i++;
+      i=i%3;
+      sum=0;
+    }
+  }
   //setLed(decode(receiv()) );
   //free(rgb);
   
